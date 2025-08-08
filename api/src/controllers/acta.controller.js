@@ -56,7 +56,7 @@ export const getActaCargoById = async (req, res) => {
       select: {
         Id_Acta_Enc: true,
         FechaActa: true,
-        empleado: { select: { CodigoEmpleado: true, Empleado: true } },
+        empleado: { select: { CodigoEmpleado: true, Empleado: true, Identidad: true, Area: true } },
         categoria: { select: { Categoria: true } },
         SistemaUsuario: true,
         detalles: {
@@ -84,7 +84,7 @@ export const getActaCargoById = async (req, res) => {
               },
             },
           },
-          orderBy: { Id_Acta_Det: "asc" },
+          orderBy: { Registro: "asc" },
         },
       },
     });
@@ -96,7 +96,9 @@ export const getActaCargoById = async (req, res) => {
       numeroActa: acta.Id_Acta_Enc,
       fecha: acta.FechaActa,
       empleado: acta.empleado?.Empleado ?? "Sin nombre",
+      identidad: acta.empleado?.Identidad ?? null,
       codigoEmpleado: acta.empleado?.CodigoEmpleado ?? null,
+      area: acta.empleado?.Area ?? null,
       categoria: acta.categoria?.Categoria ?? "Sin categoría",
       SistemaUsuario: acta.SistemaUsuario,
       detalles: acta.detalles.map((d) => ({

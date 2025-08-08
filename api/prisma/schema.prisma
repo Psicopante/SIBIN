@@ -178,6 +178,7 @@ model view_EmpleadosCH {
   CodigoArea               Int?
   Area                     String?
   EstaActivo               Boolean?
+  Identidad                String?
   Acta_Encabezado          Acta_Encabezado[]
   Acta_Encabezado_Descargo Acta_Encabezado_Descargo[]
 

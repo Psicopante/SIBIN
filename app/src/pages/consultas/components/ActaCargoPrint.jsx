@@ -10,6 +10,33 @@ const formatFechaUTC = (isoUtc) => dayjs.utc(isoUtc).format("DD/MM/YYYY");
 const formatHNL = (n) =>
   new Intl.NumberFormat("es-HN", { style: "currency", currency: "HNL" }).format(Number(n || 0));
 
+// encima del componente
+const prettifyCaracteristica = (raw) => {
+  if (!raw) return "-";
+  let t = String(raw).trim();
+
+  // Normalizar espacios
+  t = t.replace(/\s+/g, " ");
+  t = t.replace(/\s*,\s*/g, ", ").replace(/\s*;\s*/g, "; ");
+  t = t.replace(/["”]/g, '"');
+
+  // Formato para medidas tipo 47.5x24x29" -> 47.5 × 24 × 29 in
+  t = t.replace(
+    /(\d+(?:[.,]\d+)?)\s*[xX]\s*(\d+(?:[.,]\d+)?)\s*[xX]\s*(\d+(?:[.,]\d+)?)(\s*"?)/g,
+    (m, a, b, c, quote) => `${a} × ${b} × ${c}${quote ? " in" : ""}`
+  );
+
+  // Separar en partes y devolver en líneas
+  return t
+    .split(/;\s+|, (?=[A-Za-zÁÉÍÓÚÑ0-9])/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join("\n");
+};
+
+// estilo para permitir saltos de línea/viñetas en la celda
+const caracCell = { whiteSpace: "pre-wrap", wordBreak: "break-word" };
+
 export default function ActaCargoPrint({
   data, // opcional: el JSON que ya tienes
   numeroActa, // opcional: si quieres que el compo haga fetch
@@ -22,6 +49,18 @@ export default function ActaCargoPrint({
   const [acta, setActa] = useState(data);
   const [loading, setLoading] = useState(!data);
   const [err, setErr] = useState(null);
+  const [cargoArea, setCargoArea] = useState("Director");
+
+  const nombreArea = useMemo(() => {
+    return (
+      acta?.area ||
+      acta?.areaEmpleado ||
+      acta?.Area ||
+      acta?.AreaNombre ||
+      acta?.empleadoArea ||
+      "______"
+    );
+  }, [acta]);
 
   useEffect(() => {
     const load = async () => {
@@ -117,6 +156,24 @@ export default function ActaCargoPrint({
         </header>
 
         <h1 style={titulo}>ACTA DE CARGO EMPLEADO</h1>
+        {acta?.categoria === "Area" && (
+          <div
+            className="no-print"
+            style={{ display: "flex", gap: 8, alignItems: "center", margin: "8px 0 4px" }}
+          >
+            <label style={{ fontSize: 12 }}>Cargo en el acta:</label>
+            <select
+              value={cargoArea}
+              onChange={(e) => setCargoArea(e.target.value)}
+              style={{ padding: "6px 8px", fontSize: 12, borderRadius: 6 }}
+            >
+              <option value="Director">Director</option>
+              <option value="Jefe">Jefe</option>
+              <option value="Encargado">Encargado</option>
+            </select>
+            <span style={{ fontSize: 12, color: "#555" }}>(No se imprimirá este selector)</span>
+          </div>
+        )}
         <div style={metaRow}>
           <div>
             Acta No. <strong>{acta.numeroActa}</strong>
@@ -130,29 +187,43 @@ export default function ActaCargoPrint({
         </div>
 
         <section style={parrafo}>
-          Yo, <strong>{acta.empleado}</strong>, mayor de edad, con número de identidad
-          <strong> {acta.identidad || "__________"}</strong>; empleado(a) de la Comisión Nacional de
-          Telecomunicaciones (CONATEL), he RECIBIDO de la Unidad de Bienes Nacionales de la Dirección de
-          Finanzas y Administración, los bienes abajo descritos, RESPONSABILIZÁNDOME de su cuidado,
-          custodia y conservación; y a mostrarlos al ser requeridos por la autoridad competente y a
-          RESTITUIR su VALOR TOTAL en caso de pérdida, negligencia o uso inadecuado de los mismos.
+          {acta?.categoria === "Area" ? (
+            <>
+              Yo, <strong>{acta.empleado}</strong>, mayor de edad, con número de identidad
+              <strong> {acta.identidad || "__________"}</strong>, <strong>{cargoArea}</strong> de{" "}
+              <strong>{nombreArea}</strong>; empleado(a) de la Comisión Nacional de Telecomunicaciones
+              (CONATEL), he RECIBIDO de la Unidad de Bienes Nacionales de la Gerencia Administrativa, los
+              bienes abajo descritos, RESPONSABILIZÁNDOME de su cuidado, custodia y conservación; y a
+              mostrarlos al ser requeridos por la autoridad competente y a RESTITUIR su VALOR TOTAL en
+              caso de pérdida, negligencia o uso inadecuado de los mismos.
+            </>
+          ) : (
+            <>
+              Yo, <strong>{acta.empleado}</strong>, mayor de edad, con número de identidad
+              <strong> {acta.identidad || "__________"}</strong>; empleado(a) de la Comisión Nacional de
+              Telecomunicaciones (CONATEL), he RECIBIDO de la Unidad de Bienes Nacionales de la Gerencia
+              Administrativa, los bienes abajo descritos, RESPONSABILIZÁNDOME de su cuidado, custodia y
+              conservación; y a mostrarlos al ser requeridos por la autoridad competente y a RESTITUIR su
+              VALOR TOTAL en caso de pérdida, negligencia o uso inadecuado de los mismos.
+            </>
+          )}
         </section>
 
         {/* Tabla */}
         <table style={tabla}>
           <thead>
             <tr>
-              <th>No.</th>
-              <th>Registro</th>
-              <th>Nombre</th>
-              <th>Característica</th>
-              <th>Marca</th>
-              <th>Modelo</th>
-              <th>Color</th>
-              <th>Serie</th>
-              <th>Estado</th>
-              <th>Ubicación</th>
-              <th style={{ textAlign: "right" }}>Costo</th>
+              <th style={{ width: "4%" }}>No.</th>
+              <th style={{ width: "8%" }}>Registro</th>
+              <th style={{ width: "12%" }}>Nombre</th>
+              <th style={{ width: "28%" }}>Característica</th>
+              <th style={{ width: "9%" }}>Marca</th>
+              <th style={{ width: "9%" }}>Modelo</th>
+              <th style={{ width: "9%" }}>Color</th>
+              <th style={{ width: "10%" }}>Serie</th>
+              <th style={{ width: "9%" }}>Estado</th>
+              <th style={{ width: "18%" }}>Ubicación</th>
+              <th style={{ width: "10%", textAlign: "right" }}>Costo</th>
             </tr>
           </thead>
           <tbody>
@@ -161,11 +232,11 @@ export default function ActaCargoPrint({
                 <td>{i + 1}</td>
                 <td>{d?.activo?.Act_Registro}</td>
                 <td>{(d?.activo?.Act_Descripcion || "").trim()}</td>
-                <td>{(d?.activo?.Act_Caracteristica || "").trim()}</td>
-                <td>{(d?.activo?.Act_Marca || "").trim()}</td>
+                <td style={caracCell}>{prettifyCaracteristica(d?.activo?.Act_Caracteristica)}</td>
+                <td style={caracCell}>{prettifyCaracteristica(d?.activo?.Act_Marca)}</td>
                 <td>{(d?.activo?.Act_Modelo || "").trim()}</td>
-                <td>{(d?.activo?.Act_Color || "").trim()}</td>
-                <td>{(d?.activo?.Act_Serie || "").trim()}</td>
+                <td style={caracCell}>{prettifyCaracteristica(d?.activo?.Act_Color)}</td>
+                <td style={caracCell}>{prettifyCaracteristica(d?.activo?.Act_Serie)}</td>
                 <td>{(d?.activo?.EstadoDescripcion || "").trim()}</td>
                 <td>{(d?.activo?.Act_Ubicacion || "").trim()}</td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
@@ -199,9 +270,16 @@ export default function ActaCargoPrint({
         {/* NOTA SIEMPRE */}
         <div style={{ textAlign: "center", marginTop: 30 }}>
           <div style={{ marginBottom: 8, fontWeight: "bold" }}>NOTA</div>
-          <div style={{ fontSize: "12px" }}>
-            Documento generado por: <strong>{acta.SistemaUsuario}</strong>
-          </div>
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: "15mm", // distancia desde el borde inferior de la hoja
+            left: "14mm", // igual que el margen lateral del documento
+            fontSize: "12px",
+          }}
+        >
+          Documento generado por: <strong>{acta.SistemaUsuario}</strong>
         </div>
 
         {/* Nota e impresión (solo en pantalla) */}
@@ -228,6 +306,7 @@ const sheet = {
   fontSize: "12px",
   lineHeight: 1.35,
   boxShadow: "0 0 8px rgba(0,0,0,.08)",
+  position: "relative",
 };
 
 const header = {
@@ -272,6 +351,7 @@ const tabla = {
   width: "100%",
   borderCollapse: "collapse",
   fontSize: "11px",
+  tableLayout: "fixed",
 };
 
 const totalRow = {
