@@ -1,0 +1,41 @@
+# ===============================
+# 📦 Node.js (backend & frontend)
+# ===============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+.env
+.env.*
+
+# ====================
+# 📁 Prisma & Seeds
+# ====================
+prisma/dev.db
+prisma/migrations/
+
+# ================================
+# 📂 Carpeta de uploads temporal
+# ================================
+uploads/
+uploads/**
+
+# =========================
+# ⚙️ Build de React (app)
+# =========================
+app/dist/
+app/build/
+
+# =======================
+# 🛠 IDEs y otros temporales
+# =======================
+.vscode/
+.DS_Store
+*.log
+
+# ===============================
+# 📷 Opcional: carpeta coverage
+# ===============================
+coverage/

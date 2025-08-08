@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Acta_Detalle {
+  Id_Acta_Det      Int       @id(map: "PK_Acta_Detalle") @default(autoincrement())
+  Id_Usuario       Int
+  Id_Acta_Enc      Int?
+  Registro         BigInt?
+  Estado           Int?      @default(1, map: "DF_Acta_Detalle_Estado")
+  FechaDescargo    DateTime? @db.Date
+  JefeArea         Int?
+  SistemaFecha     DateTime? @default(now(), map: "DF_Acta_Detalle_SistemaFecha") @db.Date
+  Id_Acta_Descargo Int?
+
+  activo       TB_Activo?                @relation("ActivoDetalle", fields: [Registro], references: [Act_Registro])
+  encabezado   Acta_Encabezado?          @relation("DetallePorEncabezado", fields: [Id_Acta_Enc], references: [Id_Acta_Enc], onDelete: NoAction)
+  actaDescargo Acta_Encabezado_Descargo? @relation("ActaDetalleADescargo", fields: [Id_Acta_Descargo], references: [Id_Acta_Enc_Des], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Acta_Detalle_Descargo {
+  Id_Acta_Det_Des Int       @id(map: "PK_Acta_Detalle_Descargo") @default(autoincrement())
+  Id_Usuario      Int?
+  Id_Acta_Enc_Des Int?
+  Registro        BigInt?
+  FechaDescargo   DateTime? @db.Date
+  JefeArea        Int?
+  SistemaFecha    DateTime? @default(now(), map: "DF_Acta_Detalle_Descargo_SistemaFecha") @db.Date
+
+  activo         TB_Activo?                @relation("ActivoDetalleDescargo", fields: [Registro], references: [Act_Registro])
+  encabezadoDesc Acta_Encabezado_Descargo? @relation("DetallePorEncabezadoDescargo", fields: [Id_Acta_Enc_Des], references: [Id_Acta_Enc_Des])
+}
+
+model Acta_Encabezado {
+  Id_Acta_Enc    Int       @id(map: "PK_Acta_Encabezado") @default(autoincrement())
+  Id_Usuario     Int?
+  Id_Tipo_Acta   Int?
+  FechaActa      DateTime? @db.Date
+  IdCategoria    Int?
+  IdArea         Int?
+  JefeArea       Int?
+  NotaMarginal   String?   @db.NVarChar(500)
+  SistemaUsuario String?   @db.NVarChar(50)
+  ActaSubida     String?   @db.NVarChar(3)
+  Archivo        String?   @db.NVarChar(100)
+
+  detalles  Acta_Detalle[]    @relation("DetallePorEncabezado")
+  empleado  view_EmpleadosCH? @relation(fields: [Id_Usuario], references: [CodigoEmpleado], onDelete: NoAction)
+  categoria CategoriaActa?    @relation(fields: [IdCategoria], references: [IdCategoria])
+}
+
+model Acta_Encabezado_Descargo {
+  Id_Acta_Enc_Des Int       @id(map: "PK_Acta_Encabezado_Descargo") @default(autoincrement())
+  Id_Usuario      Int?
+  FechaActa       DateTime? @db.Date
+  IdCategoria     Int?
+  IdArea          Int?
+  JefeArea        Int?
+  NotaMarginal    String?   @db.NVarChar(500)
+  SistemaUsuario  String?   @db.NVarChar(50)
+
+  empleado            view_EmpleadosCH?       @relation(fields: [Id_Usuario], references: [CodigoEmpleado])
+  detallesDescargo    Acta_Detalle_Descargo[] @relation("DetallePorEncabezadoDescargo")
+  detallesPorDescargo Acta_Detalle[]          @relation("ActaDetalleADescargo")
+}
+
+model CategoriaActa {
+  IdCategoria     Int               @id(map: "PK_CategoriaActa") @default(autoincrement())
+  Categoria       String?           @db.NVarChar(50)
+  Acta_Encabezado Acta_Encabezado[]
+}
+
+model TB_Activo {
+  Act_Registro               BigInt    @id(map: "PK_TB_Activo")
+  Act_Descripcion            String?   @default("-", map: "DF_TB_Activo_Act_Descripcion") @db.VarChar(1500)
+  Act_Modelo                 String?   @db.NVarChar(1500)
+  Act_Marca                  String?   @default("-", map: "DF_TB_Activo_Act_Marca") @db.VarChar(1500)
+  Act_Caracteristica         String?   @db.VarChar(1500)
+  Act_Color                  String?   @default("-", map: "DF_TB_Activo_Act_Color") @db.VarChar(1500)
+  Act_Serie                  String?   @default("-", map: "DF_TB_Activo_Act_Serie") @db.VarChar(1500)
+  Act_Costo                  Decimal?  @db.Decimal(18, 2)
+  Act_CodigoEstado           Int?
+  Act_Observacion            String?   @default("-", map: "DF_TB_Activo_Act_Observacion") @db.VarChar(1500)
+  Act_Ubicacion              String?   @db.NVarChar(1500)
+  Act_FechaAdquisicion       DateTime? @db.Date
+  Act_DocumentoAdquisicion   String?   @default("-", map: "DF_TB_Activo_Act_DocumentoAdquisicion") @db.VarChar(1500)
+  Act_CodigoTipoActivo       Int?
+  Act_CodigoUsuario          Int?
+  Act_IdentidadUsuario       String?   @db.VarChar(1500)
+  Act_CodigoSituacion        Int?      @default(1, map: "DF_TB_Activo_Act_CodigoSituacion")
+  Act_CodigoUserSituacion    Int?      @default(1001, map: "DF_TB_Activo_Act_CodigoUserSituacion")
+  Act_Sistemafecha           DateTime? @default(now(), map: "DF_TB_Activo_Act_fechaingresado") @db.DateTime
+  Act_SistemaUser            String?   @db.VarChar(1500)
+  Act_SistemaOperativo       String?   @db.NVarChar(1500)
+  Act_Procesador             String?   @db.NVarChar(1500)
+  Act_MemoriaRam             String?   @db.NVarChar(1500)
+  Act_DiscoDuro              String?   @db.NVarChar(1500)
+  RequiereMantenimiento      String?   @db.NVarChar(3)
+  FichaSiafi                 String?   @db.NVarChar(Max)
+  MetodoAdquisicion          String?   @db.NVarChar(50)
+  Archivo                    String?   @db.NVarChar(100)
+  FechaEliminado             DateTime? @db.Date
+  FechaRequiereMantenimiento DateTime? @db.Date
+  CodigoUbicacion            String?   @db.NVarChar(50)
+  CodigoArea                 String?   @db.NVarChar(50)
+  Garantias                  String?   @db.VarChar(500)
+
+  detalles     Acta_Detalle[]          @relation("ActivoDetalle")
+  detallesDesc Acta_Detalle_Descargo[] @relation("ActivoDetalleDescargo")
+  estado       TB_EstadoActivo?        @relation(fields: [Act_CodigoEstado], references: [Es_Codigo])
+}
+
+model TB_CatalogoUbicaciones {
+  ID              Int     @id(map: "PK_TB_CatalogoUbicaciones")
+  CodigoDireccion Int?
+  Ubicacion       String? @db.VarChar(1150)
+  Direccion       String? @db.VarChar(50)
+  Observaciones   String? @db.VarChar(250)
+}
+
+model TB_DetalleSalida {
+  DetSal_CodigoSalida       Int
+  DetSal_CodigoActivo       Int
+  DetSal_DescripcionEntrada String? @db.VarChar(50)
+  DetSal_Estado             Int?
+
+  @@id([DetSal_CodigoSalida, DetSal_CodigoActivo], map: "PK_TB_DetalleSalida")
+}
+
+model TB_EstadoActivo {
+  Es_Codigo      Int     @id(map: "PK_TB_EstadoActivo")
+  Es_Descripcion String? @db.VarChar(50)
+
+  activos TB_Activo[]
+}
+
+model TB_EstadoPaseSalida {
+  EsPase_Codigo      Int     @id(map: "PK_TB_EstadoPaseSalida")
+  EsPase_Descripcion String? @db.VarChar(50)
+}
+
+model TB_Salida {
+  Sal_Codigo              Int       @id(map: "PK_Tb_Salidas")
+  Sal_CodEmpleado         Int?
+  Sal_FechaSalida         DateTime? @db.Date
+  Sal_FechaEntrada        DateTime? @db.Date
+  Sal_Motivo              String?   @db.NVarChar(Max)
+  Sal_EstadoPaseSalida    String?   @db.NChar(10)
+  Sal_ObservacionesBienes String?   @db.VarChar(200)
+  Sal_HoraSalida          String?   @db.VarChar(100)
+  Dias                    Int?
+  SistemaFecha            DateTime? @default(now(), map: "DF_TB_Salida_SistemaFecha") @db.DateTime
+}
+
+model TB_SituacionActivo {
+  Sit_Codigo      Int     @id(map: "PK_TB_SituacionActivo")
+  Sit_Descripcion String? @db.VarChar(50)
+}
+
+model Tipo_Acta {
+  Id_Tipo_Acta Int     @id(map: "PK_Tipo_Acta") @default(autoincrement())
+  Tipo         String? @db.NChar(30)
+}
+
+model view_EmpleadosCH {
+  CodigoEmpleado           Int                        @id
+  CodigoCCHH               Int?
+  Empleado                 String?
+  UsuarioSITAE             String?
+  CodigoCargo              Int?
+  Cargo                    String?
+  TipoCargo                Int?
+  CodigoArea               Int?
+  Area                     String?
+  EstaActivo               Boolean?
+  Acta_Encabezado          Acta_Encabezado[]
+  Acta_Encabezado_Descargo Acta_Encabezado_Descargo[]
+
+  @@map("view_EmpleadosCH")
+}
