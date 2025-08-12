@@ -23,3 +23,27 @@ export const getPerfilEmpleado = async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor." });
   }
 };
+
+export const listarEmpleadosSelect = async (req, res) => {
+  try {
+    const empleados = await prisma.view_EmpleadosCH.findMany({
+      select: {
+        CodigoEmpleado: true,
+        Empleado: true,
+      },
+      orderBy: {
+        Empleado: "asc",
+      },
+    });
+
+    const resultado = empleados.map((e) => ({
+      value: e.CodigoEmpleado,
+      label: e.Empleado,
+    }));
+
+    res.json(resultado);
+  } catch (error) {
+    console.error("Error al listar empleados:", error);
+    res.status(500).json({ error: "Error al listar los empleados." });
+  }
+};

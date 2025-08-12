@@ -6,18 +6,10 @@ import Login from "../pages/login/Login";
 import PrivateRoute from "./PrivateRoute";
 import HomeMenu from "../pages/home/Home";
 import Actas from "../pages/consultas/Actas";
+import ActasDescargo from "../pages/consultas/ActasDescargo";
 import ActaCargoPrintRoute from "../pages/consultas/components/ActaCargoPrintRoute";
-// import FormularioInicioExpediente from "../pages/inicioExpediente/InicioExpediente";
-// import BandejaUAC from "../pages/bandejas/BandejaUAC";
-// import BandejaDISET from "../pages/bandejas/BandejaDISET";
-// import BandejaDIGER from "../pages/bandejas/BandejaDIGER";
-// import BandejaSecretaria from "../pages/bandejas/BandejaSecretaria";
-// import BandejaUtra from "../pages/bandejas/BandejaUTRA";
-// import FormularioCertificado from "../pages/certificado/Certificado";
-// import ListadoCertificados from "../pages/certificado/ListarCertificados";
-// import PlantillaCertificado from "../pages/certificado/PlantillaCertificado";
-// import RequerimientoNuevo from "../pages/requerimientos/RequerimientoNuevo";
-// import Dashboard from "../pages/dashboard/Dashboard";
+import ActaDescargoPrintRoute from "../pages/consultas/components/ActaDescargoPrintRoute";
+import ActaCargoForm from "../pages/registros/ActaCargoForm";
 
 const AppRouter = () => {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
@@ -27,16 +19,13 @@ const AppRouter = () => {
       {/* Login público */}
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
 
-      {/* Ruta de impresión sin layout pero protegida */}
-      {/* <Route element={<PrivateRoute />}>
-        <Route path="/certificado/imprimir/:id" element={<PlantillaCertificado />} />
-      </Route> */}
-
       {/* Área protegida general con layout */}
       <Route element={<PrivateRoute />}>
         <Route path="/" element={<LayoutBase />}>
           <Route index element={<HomeMenu />} />
-          <Route path="/ActasCargo" element={<Actas />}></Route>
+          <Route path="/ActasCargo" element={<Actas />} />
+          <Route path="/ActasDescargo" element={<ActasDescargo />} />
+          <Route path="/CargoForm" element={<ActaCargoForm />} />
 
           {/* Ruta protegida solo para las areas */}
           {/* <Route path="/bandejaUac" element={<PrivateRoute roles={[125, 126, 105]} />}>
@@ -45,6 +34,7 @@ const AppRouter = () => {
         </Route>
       </Route>
       <Route path="/actas/:id/print" element={<ActaCargoPrintRoute />} />
+      <Route path="/descargos/:id/print" element={<ActaDescargoPrintRoute />} />
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

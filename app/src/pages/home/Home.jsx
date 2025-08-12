@@ -17,9 +17,23 @@ const menuItems = [
   },
   {
     title: "Actas de Descargo",
-    path: "/bandejaUac",
+    path: "/ActasDescargo",
     icon: <MdMoveToInbox size={40} />,
     description: "Expedientes pendientes de actualización de aviso de cobro.",
+    areas: [125, 126, 105],
+  },
+  {
+    title: "Registrar Acta de Cargo",
+    path: "/CargoForm",
+    icon: <MdMoveToInbox size={40} />,
+    description: "Registrar un acta de cargo.",
+    areas: [125, 126, 105],
+  },
+  {
+    title: "Registrar Acta de descargo",
+    path: "/registroCargo",
+    icon: <MdMoveToInbox size={40} />,
+    description: "Registrar un acta de descargo.",
     areas: [125, 126, 105],
   },
   {

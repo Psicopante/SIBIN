@@ -37,7 +37,7 @@ const prettifyCaracteristica = (raw) => {
 // estilo para permitir saltos de línea/viñetas en la celda
 const caracCell = { whiteSpace: "pre-wrap", wordBreak: "break-word" };
 
-export default function ActaCargoPrint({
+export default function ActaDescargoPrint({
   data, // opcional: el JSON que ya tienes
   numeroActa, // opcional: si quieres que el compo haga fetch
   fetchActaFn, // opcional: async (numeroActa)=> data
@@ -155,7 +155,7 @@ export default function ActaCargoPrint({
           </div>
         </header>
 
-        <h1 style={titulo}>ACTA DE CARGO EMPLEADO</h1>
+        <h1 style={titulo}>ACTA DESCARGO EMPLEADO</h1>
         {acta?.categoria === "Area" && (
           <div
             className="no-print"
@@ -200,11 +200,9 @@ export default function ActaCargoPrint({
           ) : (
             <>
               Yo, <strong>{acta.empleado}</strong>, mayor de edad, con número de identidad
-              <strong> {acta.identidad || "__________"}</strong>; empleado(a) de la Comisión Nacional de
-              Telecomunicaciones (CONATEL), he RECIBIDO de la Unidad de Bienes Nacionales de la Gerencia
-              Administrativa, los bienes abajo descritos, RESPONSABILIZÁNDOME de su cuidado, custodia y
-              conservación; y a mostrarlos al ser requeridos por la autoridad competente y a RESTITUIR su
-              VALOR TOTAL en caso de pérdida, negligencia o uso inadecuado de los mismos.
+              <strong> {acta.identidad || "__________"}</strong>, empleado(a) de la Comisión Nacional de
+              Telecomunicaciones (CONATEL), en este acto se hace constar que entrego a CONATEL los bienes
+              abajo descritos, los cuales estaban bajo mi cargo y custodia; bienes descritos como sigue:
             </>
           )}
         </section>

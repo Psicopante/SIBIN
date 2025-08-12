@@ -47,6 +47,49 @@ export const listarActas = async (req, res) => {
   }
 };
 
+export const listarActasDescargo = async (req, res) => {
+  const { empleado } = req.query;
+
+  try {
+    const actas = await prisma.acta_Encabezado_Descargo.findMany({
+      where: {
+        empleado: empleado
+          ? {
+              Empleado: {
+                contains: empleado,
+                mode: "insensitive", // búsqueda sin mayúsc/minúsc
+              },
+            }
+          : undefined,
+      },
+      select: {
+        Id_Acta_Enc_Des: true,
+        FechaActa: true,
+        empleado: {
+          select: {
+            Empleado: true,
+          },
+        },
+      },
+      orderBy: {
+        Id_Acta_Enc_Des: "desc",
+      },
+    });
+
+    const resultado = actas.map((a) => ({
+      numeroActa: a.Id_Acta_Enc_Des,
+      empleado: a.empleado?.Empleado || "Sin nombre",
+      categoria: "Descargo",
+      fecha: a.FechaActa,
+    }));
+
+    res.json(resultado);
+  } catch (error) {
+    console.error("Error al listar actas de descargo:", error);
+    res.status(500).json({ error: "Error al listar las actas de descargo." });
+  }
+};
+
 export const getActaCargoById = async (req, res) => {
   const { id } = req.params;
 
@@ -58,6 +101,7 @@ export const getActaCargoById = async (req, res) => {
         FechaActa: true,
         empleado: { select: { CodigoEmpleado: true, Empleado: true, Identidad: true, Area: true } },
         categoria: { select: { Categoria: true } },
+        NotaMarginal: true,
         SistemaUsuario: true,
         detalles: {
           select: {
@@ -101,6 +145,7 @@ export const getActaCargoById = async (req, res) => {
       area: acta.empleado?.Area ?? null,
       categoria: acta.categoria?.Categoria ?? "Sin categoría",
       SistemaUsuario: acta.SistemaUsuario,
+      NotaMarginal: acta.NotaMarginal,
       detalles: acta.detalles.map((d) => ({
         Id_Acta_Det: d.Id_Acta_Det,
         Id_Usuario: d.Id_Usuario,
@@ -129,6 +174,91 @@ export const getActaCargoById = async (req, res) => {
   } catch (error) {
     console.error("Error al obtener acta de cargo:", error);
     res.status(500).json({ error: "Error al obtener acta de cargo." });
+  }
+};
+
+export const getActaDescargoById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const acta = await prisma.acta_Encabezado_Descargo.findUnique({
+      where: { Id_Acta_Enc_Des: parseInt(id) },
+      select: {
+        Id_Acta_Enc_Des: true,
+        FechaActa: true,
+        SistemaUsuario: true,
+        NotaMarginal: true,
+        empleado: { select: { CodigoEmpleado: true, Empleado: true, Identidad: true, Area: true } },
+        detallesDescargo: {
+          select: {
+            Id_Acta_Det_Des: true,
+            Id_Usuario: true,
+            Registro: true,
+            FechaDescargo: true,
+            JefeArea: true,
+            activo: {
+              select: {
+                Act_Registro: true,
+                Act_Descripcion: true,
+                Act_Modelo: true,
+                Act_Marca: true,
+                Act_Caracteristica: true,
+                Act_Color: true,
+                Act_Costo: true,
+                Act_Observacion: true,
+                Act_Ubicacion: true,
+                Act_Serie: true,
+                estado: {
+                  select: { Es_Descripcion: true },
+                },
+              },
+            },
+          },
+          orderBy: { Id_Acta_Det_Des: "asc" },
+        },
+      },
+    });
+
+    if (!acta) return res.status(404).json({ error: "Acta de descargo no encontrada." });
+
+    const payload = {
+      numeroActa: acta.Id_Acta_Enc_Des,
+      fecha: acta.FechaActa,
+      empleado: acta.empleado?.Empleado ?? "Sin nombre",
+      codigoEmpleado: acta.empleado?.CodigoEmpleado ?? null,
+      area: acta.empleado?.Area ?? null,
+      identidad: acta.empleado?.Identidad ?? null,
+      categoria: "Descargo",
+      SistemaUsuario: acta.SistemaUsuario,
+      NotaMarginal: acta.NotaMarginal,
+      detalles: acta.detallesDescargo.map((d) => ({
+        Id_Acta_Det_Des: d.Id_Acta_Det_Des,
+        Id_Usuario: d.Id_Usuario,
+        Registro: d.Registro ? d.Registro.toString() : null,
+        FechaDescargo: d.FechaDescargo,
+        JefeArea: d.JefeArea,
+        activo: d.activo
+          ? {
+              Act_Registro: d.activo.Act_Registro?.toString(),
+              Act_Descripcion: d.activo.Act_Descripcion,
+              Act_Modelo: d.activo.Act_Modelo,
+              Act_Marca: d.activo.Act_Marca,
+              Act_Caracteristica: d.activo.Act_Caracteristica,
+              Act_Color: d.activo.Act_Color,
+              Act_Costo: d.activo.Act_Costo,
+              Act_Observacion: d.activo.Act_Observacion,
+              Act_Ubicacion: d.activo.Act_Ubicacion,
+              EstadoDescripcion: d.activo.estado?.Es_Descripcion ?? null,
+              Act_Serie: d.activo.Act_Serie,
+            }
+          : null,
+      })),
+    };
+
+    res.json(payload);
+  } catch (error) {
+    console.error("Error al obtener acta de descargo:", error);
+    res.status(500).json({ error: "Error al obtener acta de descargo." });
   }
 };
 
