@@ -47,3 +47,59 @@ export const listarEmpleadosSelect = async (req, res) => {
     res.status(500).json({ error: "Error al listar los empleados." });
   }
 };
+
+export const listarAreas = async (req, res) => {
+  try {
+    const areas = await prisma.view_Areas.findMany({
+      select: {
+        CodigoArea: true,
+        Area: true,
+      },
+      orderBy: {
+        Area: "asc",
+      },
+    });
+
+    const resultado = areas.map((a) => ({
+      value: a.CodigoArea,
+      label: a.Area,
+    }));
+
+    res.json(resultado);
+  } catch (error) {
+    console.error("Error al listar áreas:", error);
+    res.status(500).json({ error: "Error al listar las áreas." });
+  }
+};
+
+export const listarUbicacionesPorArea = async (req, res) => {
+  const { codigoArea } = req.params;
+
+  if (!codigoArea) {
+    return res.status(400).json({ error: "Debe proporcionar un código de área." });
+  }
+
+  try {
+    const ubicaciones = await prisma.tB_CatalogoUbicaciones.findMany({
+      where: {
+        CodigoDireccion: Number(codigoArea),
+      },
+      select: {
+        Ubicacion: true,
+      },
+      orderBy: {
+        Ubicacion: "asc",
+      },
+    });
+
+    const resultado = ubicaciones.map((u) => ({
+      value: u.Ubicacion,
+      label: u.Ubicacion,
+    }));
+
+    res.json(resultado);
+  } catch (error) {
+    console.error("Error al listar ubicaciones:", error);
+    res.status(500).json({ error: "Error al listar las ubicaciones." });
+  }
+};

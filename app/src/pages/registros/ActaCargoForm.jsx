@@ -20,7 +20,7 @@ import * as Yup from "yup";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { buscarPorRegistro } from "@/services/activosService";
-import { listaEmpleados } from "@/services/empleadosService";
+import { listaEmpleados, listaAreas } from "@/services/empleadosService";
 
 const validationSchema = Yup.object().shape({
   Id_Usuario: Yup.number()
@@ -41,11 +41,7 @@ const validationSchema = Yup.object().shape({
       then: (s) => s.required("Seleccione un área"),
       otherwise: (s) => s.nullable(),
     }),
-  JefeArea: Yup.number()
-    .typeError("Debe ser un número")
-    .integer("Entero")
-    .positive("Positivo")
-    .required("Campo obligatorio"),
+
   NotaMarginal: Yup.string()
     .trim()
     .min(5, "Muy corto")
@@ -60,7 +56,6 @@ const initialValues = {
   FechaActa: today,
   IdCategoria: 2,
   IdArea: "",
-  JefeArea: "",
   NotaMarginal: "",
 };
 
@@ -69,16 +64,14 @@ const FormularioActaCargo = () => {
   const colors = tokens(theme.palette.mode);
 
   const [areas, setAreas] = useState([]);
-  const [inputArea, setInputArea] = useState("");
 
-  const [activos, setActivos] = useState([]);
   const [empleados, setEmpleados] = useState([]);
   const [loadingEmpleados, setLoadingEmpleados] = useState(true);
-  const [loadingActivos, setLoadingActivos] = useState(false);
-  const [error, setError] = useState(null);
+  const [loadingAreas, setLoadingAreas] = useState(true);
+  const [errorEmpleados, setErrorEmpleados] = useState(null);
+  const [errorAreas, setErrorAreas] = useState(null);
 
   const [pasesSeleccionados, setPasesSeleccionados] = useState([]);
-  const [filterText, setFilterText] = useState("");
 
   const [registroInput, setRegistroInput] = useState("");
   const [buscando, setBuscando] = useState(false);
@@ -100,53 +93,42 @@ const FormularioActaCargo = () => {
   useEffect(() => {
     let alive = true;
 
-    const obtenerEmpleados = async () => {
-      try {
-        setError(null);
-        setLoadingEmpleados(true);
+    const cargarInicial = async () => {
+      setErrorEmpleados(null);
+      setErrorAreas(null);
+      setLoadingEmpleados(true);
+      setLoadingAreas(true);
 
-        const data = await listaEmpleados(); // <-- servicio real
-        if (!alive) return;
+      const [empRes, areaRes] = await Promise.allSettled([listaEmpleados(), listaAreas()]);
 
-        setEmpleados(Array.isArray(data) ? data : []);
-      } catch (err) {
-        if (!alive) return;
-        console.error("Error al cargar la lista de empleados:", err);
-        setError("No se pudo cargar la lista de empleados.");
-      } finally {
-        if (alive) setLoadingEmpleados(false);
+      if (!alive) return;
+
+      // Empleados
+      if (empRes.status === "fulfilled") {
+        setEmpleados(Array.isArray(empRes.value) ? empRes.value : []);
+        setLoadingEmpleados(false);
+      } else {
+        console.error("Error empleados:", empRes.reason);
+        setErrorEmpleados("No se pudo cargar la lista de empleados.");
+        setLoadingEmpleados(false);
+      }
+
+      // Áreas
+      if (areaRes.status === "fulfilled") {
+        setAreas(Array.isArray(areaRes.value) ? areaRes.value : []);
+        setLoadingAreas(false);
+      } else {
+        console.error("Error áreas:", areaRes.reason);
+        setErrorAreas("No se pudo cargar la lista de áreas.");
+        setLoadingAreas(false);
       }
     };
 
-    obtenerEmpleados();
-
+    cargarInicial();
     return () => {
-      alive = false; // evita setState tras unmount
+      alive = false;
     };
   }, []);
-
-  useEffect(() => {
-    setAreas([
-      { value: 101, label: "Secretaría General" },
-      { value: 105, label: "Dirección IT" },
-    ]);
-  }, [inputArea]);
-
-  // columnas del grid
-  const columnas = useMemo(
-    () => [
-      { field: "registro", headerName: "Registro", flex: 1, align: "center", headerAlign: "center" },
-      {
-        field: "descripcion",
-        headerName: "Descripción",
-        flex: 1,
-        align: "center",
-        headerAlign: "center",
-      },
-      { field: "serie", headerName: "Serie", flex: 1, align: "center", headerAlign: "center" },
-    ],
-    []
-  );
 
   const handleBuscarRegistro = async () => {
     const reg = Number(registroInput);
@@ -332,13 +314,15 @@ const FormularioActaCargo = () => {
                     </Grid>
 
                     {values.IdCategoria === 2 && (
-                      <Grid size={{ xs: 12, md: 6 }}>
+                      <Grid size={{ xs: 12, md: 12 }}>
                         <Autocomplete
-                          options={areas}
+                          options={areas} // [{ value, label }]
                           getOptionLabel={(o) => (typeof o === "string" ? o : `${o.value} - ${o.label}`)}
-                          filterOptions={(x) => x}
-                          onInputChange={(e, v) => setInputArea(v)}
-                          onChange={(e, v) => setFieldValue("IdArea", v?.value || "")}
+                          isOptionEqualToValue={(opt, val) => String(opt.value) === String(val.value)}
+                          value={areas.find((a) => String(a.value) === String(values.IdArea)) || null}
+                          onChange={(e, newVal) =>
+                            setFieldValue("IdArea", newVal ? Number(newVal.value) : "")
+                          }
                           renderInput={(params) => (
                             <TextField
                               {...params}
@@ -348,24 +332,19 @@ const FormularioActaCargo = () => {
                               helperText={touched.IdArea && errors.IdArea}
                             />
                           )}
+                          // (opcional) mejor búsqueda por código o nombre
+                          filterOptions={(opts, state) => {
+                            const q = state.inputValue.toLowerCase().trim();
+                            if (!q) return opts;
+                            return opts.filter(
+                              (o) =>
+                                String(o.value).toLowerCase().includes(q) ||
+                                String(o.label).toLowerCase().includes(q)
+                            );
+                          }}
                         />
                       </Grid>
                     )}
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <TextField
-                        color="secondary"
-                        name="JefeArea"
-                        label="Jefe de Área (Id)"
-                        value={values.JefeArea}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        fullWidth
-                        error={touched.JefeArea && Boolean(errors.JefeArea)}
-                        helperText={touched.JefeArea && errors.JefeArea}
-                        inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                      />
-                    </Grid>
 
                     <Grid size={{ xs: 12 }}>
                       <TextField

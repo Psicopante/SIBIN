@@ -184,3 +184,17 @@ model view_EmpleadosCH {
 
   @@map("view_EmpleadosCH")
 }
+
+model View_Areas {
+  CodigoArea      Int
+  CodigoAreaCargo Int?
+  Area            String?   @db.NVarChar(255)
+  Ubicacion       String?   @db.NVarChar(255)
+  SistemaUser     String?   @db.NVarChar(50)
+  SistemaFecha    DateTime? @db.DateTime
+  CodigoDirector  Int?
+  CodigoJefe      Int?
+
+  @@id([CodigoArea])
+  @@map("View_Areas")
+}
