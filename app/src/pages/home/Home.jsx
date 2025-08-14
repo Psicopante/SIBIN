@@ -31,7 +31,7 @@ const menuItems = [
   },
   {
     title: "Registrar Acta de descargo",
-    path: "/registroCargo",
+    path: "/DescargoForm",
     icon: <MdMoveToInbox size={40} />,
     description: "Registrar un acta de descargo.",
     areas: [125, 126, 105],

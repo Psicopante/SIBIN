@@ -10,6 +10,7 @@ import ActasDescargo from "../pages/consultas/ActasDescargo";
 import ActaCargoPrintRoute from "../pages/consultas/components/ActaCargoPrintRoute";
 import ActaDescargoPrintRoute from "../pages/consultas/components/ActaDescargoPrintRoute";
 import ActaCargoForm from "../pages/registros/ActaCargoForm";
+import ActaDescargo from "../pages/registros/ActaDescargoForm";
 
 const AppRouter = () => {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
@@ -26,6 +27,7 @@ const AppRouter = () => {
           <Route path="/ActasCargo" element={<Actas />} />
           <Route path="/ActasDescargo" element={<ActasDescargo />} />
           <Route path="/CargoForm" element={<ActaCargoForm />} />
+          <Route path="/DescargoForm" element={<ActaDescargo />} />
 
           {/* Ruta protegida solo para las areas */}
           {/* <Route path="/bandejaUac" element={<PrivateRoute roles={[125, 126, 105]} />}>

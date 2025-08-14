@@ -59,7 +59,7 @@ const initialValues = {
   NotaMarginal: "",
 };
 
-const FormularioActaCargo = () => {
+const FormularioActaDescargo = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
@@ -77,17 +77,6 @@ const FormularioActaCargo = () => {
   const [buscando, setBuscando] = useState(false);
   const [resultadoActivo, setResultadoActivo] = useState(null);
 
-  const [ubicacionDefault, setUbicacionDefault] = useState("");
-  const [ubicacionesMap, setUbicacionesMap] = useState({}); // { [registro]: "Ubicación" }
-
-  const ubicacionesOptions = [
-    "Sala IT",
-    "Oficina Dirección",
-    "Bodega",
-    "Recepción",
-    "Almacén",
-    "Mesa de Ayuda",
-  ];
   const getRowKey = (row) => String(row.registro ?? row.id);
 
   useEffect(() => {
@@ -130,15 +119,16 @@ const FormularioActaCargo = () => {
     };
   }, []);
 
-  const handleBuscarRegistro = async () => {
+  const handleBuscarRegistro = async (codigoEmpleado) => {
     const reg = Number(registroInput);
+    console.log(codigoEmpleado);
     if (!reg || isNaN(reg)) {
       toast.warn("Ingresa un número de registro válido");
       return;
     }
     try {
       setBuscando(true);
-      const data = await buscarPorRegistro(reg);
+      const data = await buscarPorRegistro(reg, { empleado: codigoEmpleado });
       setResultadoActivo(data);
     } catch (e) {
       console.error(e);
@@ -150,51 +140,32 @@ const FormularioActaCargo = () => {
   };
 
   const handleAgregarActual = () => {
-    if (!resultadoActivo || resultadoActivo.cargado) return;
+    if (!resultadoActivo) return;
+
+    if (!resultadoActivo.validacionDescargo?.puedeDescargar) {
+      toast.warn("Este activo no pertenece al empleado seleccionado.");
+      return;
+    }
 
     const key = getRowKey(resultadoActivo);
-    // si no hay ubicación específica, usa la default (puedes exigirla)
-    const ubic = ubicacionesMap[key] ?? ubicacionDefault ?? "";
-    setUbicacionesMap((m) => ({ ...m, [key]: ubic }));
 
     setPasesSeleccionados((prev) => {
       const existe = prev.some((r) => getRowKey(r) === key);
       return existe ? prev : [...prev, resultadoActivo];
     });
 
-    // limpieza visual
     setRegistroInput("");
     setResultadoActivo(null);
   };
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      // Validación: que todas las filas tengan ubicación (ya sea específica o default)
-      const faltanUbicaciones = pasesSeleccionados.filter((n) => {
-        const key = getRowKey(n);
-        const ub = ubicacionesMap[key] ?? ubicacionDefault ?? n.ubicacion ?? n.Ubicacion ?? "";
-        return !ub;
-      });
-      if (faltanUbicaciones.length) {
-        toast.warn("Hay activos sin ubicación. Asigna una ubicación por defecto o específica.");
-        setSubmitting(false);
-        return;
-      }
-
-      const Registros = pasesSeleccionados.map((n) => {
-        const key = getRowKey(n);
-        const Ubicacion = ubicacionesMap[key] ?? ubicacionDefault ?? n.ubicacion ?? n.Ubicacion ?? "";
-
-        return {
-          Registro: Number(n.registro ?? n.Registro),
-          Ubicacion,
-        };
-      });
+      const Registros = pasesSeleccionados.map((n) => Number(n.registro ?? n.Registro));
 
       const payload = { ...values, Registros };
 
       console.log("payload a enviar:", payload);
-      // const resp = await crearActaCargo(payload);
+      // const resp = await crearActaDescargo(payload);
       // toast.success("Acta guardada correctamente");
       // resetForm();
       toast.info("Demo: revisa la consola para ver el payload.");
@@ -208,7 +179,7 @@ const FormularioActaCargo = () => {
 
   return (
     <Box m="20px">
-      <Header title="Acta de Cargo" subtitle="Registro de acta y selección de activos" />
+      <Header title="Acta de Descargo" subtitle="Registro de acta de descargo." />
 
       <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit}>
         {({ values, errors, touched, handleChange, handleBlur, setFieldValue, isSubmitting }) => (
@@ -375,21 +346,15 @@ const FormularioActaCargo = () => {
                         ) : (
                           pasesSeleccionados.map((r) => {
                             const key = getRowKey(r);
-                            const ub = ubicacionesMap[key] ?? "";
                             return (
                               <Chip
                                 key={key}
                                 size="medium"
-                                label={`${r.registro}${ub ? ` — ${ub}` : ""}`}
+                                label={`${r.registro}`}
                                 onDelete={() => {
                                   setPasesSeleccionados((prev) =>
                                     prev.filter((x) => getRowKey(x) !== key)
                                   );
-                                  setUbicacionesMap((m) => {
-                                    const n = { ...m };
-                                    delete n[key];
-                                    return n;
-                                  });
                                 }}
                                 sx={{
                                   backgroundColor: colors.blueAccent[600],
@@ -432,41 +397,36 @@ const FormularioActaCargo = () => {
 
                   {/* Barra: Registro + Buscar + Ubicación por defecto */}
                   <Box sx={{ mb: 2, display: "flex", gap: 1, alignItems: "center" }}>
-                    <Autocomplete
-                      size="small"
-                      color="secondary"
-                      options={ubicacionesOptions}
-                      value={ubicacionDefault}
-                      onChange={(e, val) => setUbicacionDefault(val ?? "")}
-                      renderInput={(p) => (
-                        <TextField color="secondary" {...p} label="Ubicación por defecto" />
-                      )}
-                      sx={{ width: 300, ml: "auto" }}
-                    />
-                    <TextField
-                      size="small"
-                      color="secondary"
-                      label="Ingrese registro"
-                      value={registroInput}
-                      onChange={(e) => setRegistroInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleBuscarRegistro();
-                        }
-                      }}
-                    />
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        color="secondary"
+                        label="Ingrese registro"
+                        value={registroInput}
+                        onChange={(e) => setRegistroInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleBuscarRegistro(values.Id_Usuario);
+                          }
+                        }}
+                      />
+                    </Grid>
 
-                    <Button
-                      type="button"
-                      variant="outlined"
-                      onClick={handleBuscarRegistro}
-                      disabled={buscando}
-                      sx={{ height: 40, borderColor: colors.gov[500], color: colors.gov[500] }}
-                    >
-                      {buscando ? "Buscando..." : "Buscar"}
-                    </Button>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Button
+                        fullWidth
+                        type="button"
+                        variant="outlined"
+                        onClick={() => handleBuscarRegistro(values.Id_Usuario)}
+                        disabled={buscando}
+                        sx={{ height: 40, borderColor: colors.gov[500], color: colors.gov[500] }}
+                      >
+                        {buscando ? "Buscando..." : "Buscar"}
+                      </Button>
+                    </Grid>
                   </Box>
 
                   {/* Resultado de búsqueda */}
@@ -501,50 +461,95 @@ const FormularioActaCargo = () => {
                           </Typography>
                         </Grid>
 
-                        {/* Acciones / Ubicación / Estado */}
+                        {/* Acciones / Estado */}
                         <Grid size={{ xs: 12, md: 6 }}>
-                          <Autocomplete
-                            size="small"
-                            options={ubicacionesOptions}
-                            value={ubicacionesMap[getRowKey(resultadoActivo)] ?? ""}
-                            onChange={(e, val) =>
-                              setUbicacionesMap((m) => ({
-                                ...m,
-                                [getRowKey(resultadoActivo)]: val ?? "",
-                              }))
-                            }
-                            renderInput={(p) => (
-                              <TextField color="secondary" {...p} label="Ubicación (este ítem)" />
-                            )}
-                            sx={{ mb: 1.25 }}
-                          />
+                          {(() => {
+                            const puedeDescargar = !!resultadoActivo?.validacionDescargo?.puedeDescargar;
+                            const estaCargado = !!resultadoActivo?.cargado;
 
-                          {resultadoActivo.cargado ? (
-                            <>
-                              <Chip label="Ya cargado" color="warning" sx={{ mb: 1, fontWeight: 800 }} />
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: 900, color: colors.grey[100], lineHeight: 1.2 }}
+                            // Caso 1: viene validación (llamaste con ?empleado=)
+                            if (resultadoActivo?.validacionDescargo) {
+                              return puedeDescargar ? (
+                                <Button
+                                  variant="contained"
+                                  color="secondary"
+                                  onClick={handleAgregarActual}
+                                  fullWidth
+                                  sx={{ fontWeight: 800 }}
+                                >
+                                  Agregar a la lista
+                                </Button>
+                              ) : (
+                                <>
+                                  <Chip
+                                    label="No se puede descargar: pertenece a otro empleado"
+                                    color="warning"
+                                    sx={{ mb: 1, fontWeight: 800 }}
+                                  />
+                                  {estaCargado && (
+                                    <>
+                                      <Typography
+                                        variant="h6"
+                                        sx={{
+                                          fontWeight: 900,
+                                          color: colors.grey[100],
+                                          lineHeight: 1.2,
+                                        }}
+                                      >
+                                        Acta #{resultadoActivo.cargadoInfo?.Id_Acta_Enc}
+                                      </Typography>
+                                      <Typography
+                                        variant="body1"
+                                        sx={{ color: colors.grey[200], mt: 0.25 }}
+                                      >
+                                        {resultadoActivo.cargadoInfo?.FechaActa
+                                          ? dayjs(resultadoActivo.cargadoInfo.FechaActa).format(
+                                              "YYYY-MM-DD"
+                                            )
+                                          : "-"}
+                                        {" — "}
+                                        {resultadoActivo.cargadoInfo?.Empleado || "-"}
+                                      </Typography>
+                                    </>
+                                  )}
+                                </>
+                              );
+                            }
+
+                            // Caso 2: no vino validación (fallback por si no mandaste ?empleado=)
+                            return estaCargado ? (
+                              <>
+                                <Chip
+                                  label="Ya cargado"
+                                  color="warning"
+                                  sx={{ mb: 1, fontWeight: 800 }}
+                                />
+                                <Typography
+                                  variant="h6"
+                                  sx={{ fontWeight: 900, color: colors.grey[100], lineHeight: 1.2 }}
+                                >
+                                  Acta #{resultadoActivo.cargadoInfo?.Id_Acta_Enc}
+                                </Typography>
+                                <Typography variant="body1" sx={{ color: colors.grey[200], mt: 0.25 }}>
+                                  {resultadoActivo.cargadoInfo?.FechaActa
+                                    ? dayjs(resultadoActivo.cargadoInfo.FechaActa).format("YYYY-MM-DD")
+                                    : "-"}
+                                  {" — "}
+                                  {resultadoActivo.cargadoInfo?.Empleado || "-"}
+                                </Typography>
+                              </>
+                            ) : (
+                              <Button
+                                variant="contained"
+                                color="secondary"
+                                onClick={handleAgregarActual}
+                                fullWidth
+                                sx={{ fontWeight: 800 }}
                               >
-                                Acta #{resultadoActivo.cargadoInfo?.Id_Acta_Enc}
-                              </Typography>
-                              <Typography variant="body1" sx={{ color: colors.grey[200], mt: 0.25 }}>
-                                {dayjs(resultadoActivo.cargadoInfo?.FechaActa).format("YYYY-MM-DD")}
-                                {" — "}
-                                {resultadoActivo.cargadoInfo?.Empleado}
-                              </Typography>
-                            </>
-                          ) : (
-                            <Button
-                              variant="contained"
-                              color="secondary"
-                              onClick={handleAgregarActual}
-                              fullWidth
-                              sx={{ fontWeight: 800 }}
-                            >
-                              Agregar a la lista
-                            </Button>
-                          )}
+                                Agregar a la lista
+                              </Button>
+                            );
+                          })()}
                         </Grid>
                       </Grid>
                     </Card>
@@ -559,4 +564,4 @@ const FormularioActaCargo = () => {
   );
 };
 
-export default FormularioActaCargo;
+export default FormularioActaDescargo;

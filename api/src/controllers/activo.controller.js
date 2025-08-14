@@ -110,6 +110,7 @@ export const listarActivosLibres = async (req, res) => {
 
 export const obtenerActivoPorRegistro = async (req, res) => {
   const { registro } = req.params;
+  const { empleado } = req.query; // opcional: código del empleado que quiere descargar
 
   try {
     // 1) Buscar el activo
@@ -149,9 +150,38 @@ export const obtenerActivoPorRegistro = async (req, res) => {
       },
     });
 
-    // 3) Armar respuesta
     const cargado = !!detalleCargado;
+    const codigoEmpleadoActual = detalleCargado?.encabezado?.Id_Usuario ?? null;
 
+    // 3) Si viene ?empleado=xxxx, validar “pertenece al empleado”
+    let validacionDescargo = null;
+    if (empleado) {
+      const empleadoNum = Number(empleado);
+      const esDelEmpleado = cargado && codigoEmpleadoActual === empleadoNum;
+
+      validacionDescargo = {
+        solicitadoPor: empleadoNum,
+        estaCargado: cargado,
+        esDelEmpleado, // true si el registro cargado pertenece a ese empleado
+        puedeDescargar: esDelEmpleado, // solo puede descargar si esDelEmpleado
+        motivo: !cargado
+          ? "El activo no está cargado."
+          : esDelEmpleado
+          ? null
+          : "El activo está cargado a otro empleado.",
+        // info del “dueño” actual si aplica
+        perteneceA: cargado
+          ? {
+              CodigoEmpleado: codigoEmpleadoActual,
+              Empleado: detalleCargado.encabezado?.empleado?.Empleado ?? null,
+              Id_Acta_Enc: detalleCargado.Id_Acta_Enc,
+              FechaActa: detalleCargado.encabezado?.FechaActa ?? null,
+            }
+          : null,
+      };
+    }
+
+    // 4) Respuesta
     res.json({
       id: Number(activo.Act_Registro),
       registro: Number(activo.Act_Registro),
@@ -160,16 +190,16 @@ export const obtenerActivoPorRegistro = async (req, res) => {
       descripcionDetallada: activo.Act_Descripcion || "-",
       marca: activo.Act_Marca || "-",
       modelo: activo.Act_Modelo || "-",
-      cargado, // true/false
-      // detalles útiles si está cargado
+      cargado, // true/false global
       cargadoInfo: cargado
         ? {
             Id_Acta_Enc: detalleCargado.Id_Acta_Enc,
             FechaActa: detalleCargado.encabezado?.FechaActa ?? null,
-            CodigoEmpleado: detalleCargado.encabezado?.Id_Usuario ?? null,
+            CodigoEmpleado: codigoEmpleadoActual,
             Empleado: detalleCargado.encabezado?.empleado?.Empleado ?? null,
           }
         : null,
+      validacionDescargo, // solo aparece si mandas ?empleado=
     });
   } catch (error) {
     console.error("Error al obtener activo:", error);
