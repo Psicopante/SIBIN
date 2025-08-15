@@ -32,30 +32,6 @@ const Sidebar = () => {
   const bandejas = [
     { path: "/dashboard", label: "Dashboard", areas: [105], icon: <MdDashboard size={20} /> },
     { path: "/bandejaUac", label: "Bandeja UAC", areas: [125, 126, 105], icon: <MdMoveToInbox /> },
-    {
-      path: "/ActasCargo",
-      label: "Actas de cargo",
-      areas: [107, 126, 144, 105],
-      icon: <MdMoveToInbox />,
-    },
-    {
-      path: "/bandejaDiset",
-      label: "Bandeja DISET",
-      areas: [117, 118, 119, 105],
-      icon: <MdMoveToInbox />,
-    },
-    {
-      path: "/bandejaDiger",
-      label: "Bandeja DIGER",
-      areas: [120, 121, 122, 105],
-      icon: <MdMoveToInbox />,
-    },
-    {
-      path: "/bandejaSecretaria",
-      label: "Bandeja Secretaria",
-      areas: [126, 105],
-      icon: <MdMoveToInbox />,
-    },
   ];
 
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -169,31 +145,24 @@ const Sidebar = () => {
                 Registros
               </Typography>
             )}
-            <MenuItem icon={<MdFactCheck size={20} />} onClick={() => navigate("/iniciarExpediente")}>
-              Iniciar Expediente
+            <MenuItem icon={<MdFactCheck size={20} />} onClick={() => navigate("/CargoForm")}>
+              Acta de Cargo
+            </MenuItem>
+            <MenuItem icon={<MdFactCheck size={20} />} onClick={() => navigate("/DescargoForm")}>
+              Acta de descargo
             </MenuItem>
 
-            {esJefe && (
-              <MenuItem onClick={() => navigate("/bandejaPases")} icon={<MdInbox />}>
-                Bandeja de Pases
-              </MenuItem>
-            )}
             {!isCollapsed && (
               <Typography variant="h6" color={colors.grey[300]} sx={{ m: "15px 0 5px 20px" }}>
-                Certificados Emitidos
+                Consultas
               </Typography>
             )}
-            <MenuItem
-              icon={<MdDeviceUnknown size={20} />}
-              onClick={() => navigate("/listadoCertificados")}
-            >
-              Buscar Certificado
+            <MenuItem icon={<MdDeviceUnknown size={20} />} onClick={() => navigate("/ActasCargo")}>
+              Actas de Cargo
             </MenuItem>
-            {esJefe && (
-              <MenuItem onClick={() => navigate("/bandejaVacaciones")} icon={<MdInbox />}>
-                Bandeja Vacaciones
-              </MenuItem>
-            )}
+            <MenuItem icon={<MdDeviceUnknown size={20} />} onClick={() => navigate("/ActasDescargo")}>
+              Actas de Descargo
+            </MenuItem>
           </Menu>
         </SidebarContent>
 

@@ -107,7 +107,15 @@ export default function TopbarSearchActivo() {
 
       {/* Modal con resultados */}
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            bgcolor: colors.backGround[100], // 🎨 color de fondo
+            color: colors.grey[100], // opcional: color de texto
+          }}
+        >
           <Inventory2RoundedIcon />
           Detalle del activo
           <Box sx={{ flex: 1 }} />
@@ -201,7 +209,11 @@ export default function TopbarSearchActivo() {
           )}
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions
+          sx={{
+            bgcolor: colors.backGround[100],
+          }}
+        >
           {/* Aquí puedes poner acciones como "Agregar a selección", "Abrir acta", etc. */}
           <Button onClick={handleClose} color="secondary" variant="contained">
             Cerrar
