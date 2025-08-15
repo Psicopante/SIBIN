@@ -123,6 +123,17 @@ export const obtenerActivoPorRegistro = async (req, res) => {
         Act_Descripcion: true,
         Act_Marca: true,
         Act_Modelo: true,
+        Act_Color: true,
+        Act_Costo: true,
+        Act_Ubicacion: true,
+        Act_FechaAdquisicion: true,
+        Act_DocumentoAdquisicion: true,
+        MetodoAdquisicion: true,
+        Act_SistemaOperativo: true,
+        Act_Procesador: true,
+        Act_MemoriaRam: true,
+        Act_DiscoDuro: true,
+        FichaSiafi: true,
       },
     });
 
@@ -190,6 +201,17 @@ export const obtenerActivoPorRegistro = async (req, res) => {
       descripcionDetallada: activo.Act_Descripcion || "-",
       marca: activo.Act_Marca || "-",
       modelo: activo.Act_Modelo || "-",
+      color: activo.Act_Color || "-",
+      costo: activo.Act_Costo || "-",
+      ubicacion: activo.Act_Ubicacion || "-",
+      fechaAdquisision: activo.Act_FechaAdquisicion || "-",
+      documentoAdquisicion: activo.Act_DocumentoAdquisicion || "-",
+      metodoAdquisicion: activo.MetodoAdquisicion || "-",
+      sistemaOperativo: activo.Act_SistemaOperativo || "-",
+      procesador: activo.Act_Procesador || "-",
+      ram: activo.Act_MemoriaRam || "-",
+      discoDuro: activo.Act_DiscoDuro || "-",
+      dichaSiafi: activo.FichaSiafi || "-",
       cargado, // true/false global
       cargadoInfo: cargado
         ? {

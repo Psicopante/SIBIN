@@ -17,13 +17,13 @@ import { ColorModeContext, tokens } from "@/theme/theme";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import NotificationsOutlinedIcon from "@mui/icons-material/NotificationsOutlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { setLogout } from "@/state/authSlice";
 import { clearEmpleado } from "@/state/empleadoSlice";
 import { persistor } from "@/state/store";
+import TopbarSearchActivo from "@/components/TopbarSearchActivo";
 // import UserWidget from "@/components/UserWidget"; // ajusta si aún lo usas
 
 const Topbar = () => {
@@ -39,11 +39,7 @@ const Topbar = () => {
   const [anchorElNotifications, setAnchorElNotifications] = useState(null);
   const [anchorElUser, setAnchorElUser] = useState(null);
 
-  const [notifications] = useState([
-    // "Debe actualizar sus datos generales",
-    // "Tiene aviso(s) pendientes de documentación",
-    // "Notificación 3: Tarea completada",
-  ]);
+  const [notifications] = useState([]);
 
   const handleOpenNotifications = (event) => {
     setAnchorElNotifications(event.currentTarget);
@@ -74,11 +70,12 @@ const Topbar = () => {
   return (
     <Box display="flex" justifyContent="space-between" p={2}>
       <Typography variant="h4" fontWeight="bold" color={colors.grey[100]}>
-        Sistema de Homologación (SHMG)
+        Sistema de Bienes Nacionales (SIBIN)
       </Typography>
       <Box />
 
       <Box display="flex" gap={1}>
+        <TopbarSearchActivo />
         <IconButton onClick={colorMode.toggleColorMode}>
           {theme.palette.mode === "dark" ? <DarkModeOutlinedIcon /> : <LightModeOutlinedIcon />}
         </IconButton>

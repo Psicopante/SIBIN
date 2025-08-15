@@ -56,7 +56,7 @@ export const listarAreas = async (req, res) => {
         Area: true,
       },
       orderBy: {
-        Area: "asc",
+        CodigoArea: "asc",
       },
     });
 

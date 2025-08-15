@@ -21,6 +21,7 @@ import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { buscarPorRegistro } from "@/services/activosService";
 import { listaEmpleados, listaAreas } from "@/services/empleadosService";
+import { crearActaDescargo } from "@services/actasService";
 
 const validationSchema = Yup.object().shape({
   Id_Usuario: Yup.number()
@@ -54,7 +55,7 @@ const today = dayjs().format("YYYY-MM-DD");
 const initialValues = {
   Id_Usuario: "",
   FechaActa: today,
-  IdCategoria: 2,
+  IdCategoria: 1,
   IdArea: "",
   NotaMarginal: "",
 };
@@ -160,15 +161,24 @@ const FormularioActaDescargo = () => {
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      const Registros = pasesSeleccionados.map((n) => Number(n.registro ?? n.Registro));
+      const Registros = pasesSeleccionados.map((n) => {
+        // En descargo la ubicación es fija
+        const Ubicacion = "EDIFICIO ANEXO, BODEGA UBN";
 
-      const payload = { ...values, Registros };
+        return {
+          Registro: Number(n.registro ?? n.Registro),
+          Ubicacion,
+        };
+      });
+
+      const payload = { ...values, Registros, JefeArea: values.Id_Usuario };
 
       console.log("payload a enviar:", payload);
-      // const resp = await crearActaDescargo(payload);
-      // toast.success("Acta guardada correctamente");
-      // resetForm();
-      toast.info("Demo: revisa la consola para ver el payload.");
+      const resp = await crearActaDescargo(payload);
+      toast.success("Acta de descargo guardada correctamente");
+      resetForm();
+      setPasesSeleccionados([]);
+      //toast.info("Demo: revisa la consola para ver el payload.");
     } catch (e) {
       console.error(e);
       toast.error("Error al guardar el acta");

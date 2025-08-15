@@ -40,3 +40,13 @@ export const obtenerDescargoPorId = async (numActa) => {
     throw error;
   }
 };
+
+export const crearActaDescargo = async (payload) => {
+  const { data } = await api.post("/actas/descargo", payload);
+  return data;
+};
+
+export const crearActaCargo = async (payload) => {
+  const { data } = await api.post("/actas/cargo", payload);
+  return data;
+};

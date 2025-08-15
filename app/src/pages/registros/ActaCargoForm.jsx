@@ -11,16 +11,28 @@ import {
   Chip,
   Typography,
   Grid,
+  Paper,
+  Stack,
+  IconButton,
+  Tooltip,
+  InputAdornment,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { tokens } from "@/theme/theme";
 import Header from "@/components/Header";
+import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import ClearAllRoundedIcon from "@mui/icons-material/ClearAllRounded";
+import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { buscarPorRegistro } from "@/services/activosService";
-import { listaEmpleados, listaAreas } from "@/services/empleadosService";
+import { listaEmpleados, listaAreas, listarUbicaciones } from "@/services/empleadosService";
+import { crearActaCargo } from "@services/actasService";
 
 const validationSchema = Yup.object().shape({
   Id_Usuario: Yup.number()
@@ -54,7 +66,7 @@ const today = dayjs().format("YYYY-MM-DD");
 const initialValues = {
   Id_Usuario: "",
   FechaActa: today,
-  IdCategoria: 2,
+  IdCategoria: 1,
   IdArea: "",
   NotaMarginal: "",
 };
@@ -80,14 +92,8 @@ const FormularioActaCargo = () => {
   const [ubicacionDefault, setUbicacionDefault] = useState("");
   const [ubicacionesMap, setUbicacionesMap] = useState({}); // { [registro]: "Ubicación" }
 
-  const ubicacionesOptions = [
-    "Sala IT",
-    "Oficina Dirección",
-    "Bodega",
-    "Recepción",
-    "Almacén",
-    "Mesa de Ayuda",
-  ];
+  const [ubicacionesOptions, setUbicacionesOptions] = useState([]);
+  const [loadingUbicaciones, setLoadingUbicaciones] = useState(false);
   const getRowKey = (row) => String(row.registro ?? row.id);
 
   useEffect(() => {
@@ -129,6 +135,28 @@ const FormularioActaCargo = () => {
       alive = false;
     };
   }, []);
+
+  const cargarUbicacionesPorArea = async (areaValue) => {
+    if (!areaValue) {
+      setUbicacionesOptions([]);
+      setUbicacionDefault("");
+      return;
+    }
+    try {
+      setLoadingUbicaciones(true);
+      const data = await listarUbicaciones(areaValue); // ← tu servicio
+      // backend: [{value, label}, ...]  -> usamos value como string
+      const opts = Array.isArray(data) ? data.map((o) => o.value || o.label).filter(Boolean) : [];
+      setUbicacionesOptions(opts);
+      // si quieres preseleccionar la primera:
+      // setUbicacionDefault(opts[0] ?? "");
+    } catch (e) {
+      console.error("Error cargando ubicaciones:", e);
+      setUbicacionesOptions([]);
+    } finally {
+      setLoadingUbicaciones(false);
+    }
+  };
 
   const handleBuscarRegistro = async () => {
     const reg = Number(registroInput);
@@ -193,11 +221,28 @@ const FormularioActaCargo = () => {
 
       const payload = { ...values, Registros };
 
-      console.log("payload a enviar:", payload);
-      // const resp = await crearActaCargo(payload);
-      // toast.success("Acta guardada correctamente");
-      // resetForm();
-      toast.info("Demo: revisa la consola para ver el payload.");
+      try {
+        const resp = await crearActaCargo(payload);
+        console.log(resp);
+        // Si llega status 201 y tiene mensaje de éxito
+        if (resp?.message) {
+          toast.success(`${resp.message} (ID: ${resp.Id_Acta_Enc})`);
+        } else {
+          toast.success("Acta guardada correctamente");
+        }
+      } catch (error) {
+        // Si el backend envía error con registros ocupados
+        if (error.response?.data?.error) {
+          const { error: msg, registrosOcupados } = error.response.data;
+          const detalle = registrosOcupados?.length ? `Registros: ${registrosOcupados.join(", ")}` : "";
+          toast.error(`${msg} ${detalle}`);
+        } else {
+          // Error genérico
+          toast.error("Ocurrió un error al guardar el acta");
+        }
+      }
+      resetForm();
+      setPasesSeleccionados([]);
     } catch (e) {
       console.error(e);
       toast.error("Error al guardar el acta");
@@ -364,47 +409,107 @@ const FormularioActaCargo = () => {
 
                     {/* Vista de Registros seleccionados desde el grid (solo lectura) */}
                     <Grid size={{ xs: 12 }}>
-                      <Typography variant="body2" sx={{ mb: 0.5, color: colors.grey[300] }}>
-                        Registros seleccionados
-                      </Typography>
-                      <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 1 }}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          border: `1px solid ${colors.grey[700]}`,
+                          backgroundColor: colors.backGround[100],
+                        }}
+                      >
+                        {/* Encabezado: título + contador + limpiar */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            mb: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: colors.grey[200], fontWeight: 700 }}>
+                            Registros seleccionados
+                            {pasesSeleccionados.length > 0 && (
+                              <Typography
+                                component="span"
+                                sx={{ ml: 1, color: colors.greenAccent[400] }}
+                              >
+                                ({pasesSeleccionados.length})
+                              </Typography>
+                            )}
+                          </Typography>
+
+                          {pasesSeleccionados.length > 0 && (
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setPasesSeleccionados([]);
+                                setUbicacionesMap({});
+                              }}
+                              sx={{
+                                color: colors.grey[300],
+                                "&:hover": { color: colors.gov[500], backgroundColor: "transparent" },
+                              }}
+                              title="Limpiar todo"
+                            >
+                              <ClearAllRoundedIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                        </Box>
+
                         {pasesSeleccionados.length === 0 ? (
                           <Typography variant="caption" sx={{ color: colors.grey[400] }}>
                             (Agrega registros con el buscador)
                           </Typography>
                         ) : (
-                          pasesSeleccionados.map((r) => {
-                            const key = getRowKey(r);
-                            const ub = ubicacionesMap[key] ?? "";
-                            return (
-                              <Chip
-                                key={key}
-                                size="medium"
-                                label={`${r.registro}${ub ? ` — ${ub}` : ""}`}
-                                onDelete={() => {
-                                  setPasesSeleccionados((prev) =>
-                                    prev.filter((x) => getRowKey(x) !== key)
-                                  );
-                                  setUbicacionesMap((m) => {
-                                    const n = { ...m };
-                                    delete n[key];
-                                    return n;
-                                  });
-                                }}
-                                sx={{
-                                  backgroundColor: colors.blueAccent[600],
-                                  color: "#fff",
-                                  fontWeight: "bold",
-                                  "&:hover": { backgroundColor: colors.blueAccent[500] },
-                                  fontSize: "1rem",
-                                  height: "30px",
-                                  "& .MuiChip-label": { padding: "0 12px" },
-                                }}
-                              />
-                            );
-                          })
+                          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+                            {pasesSeleccionados.map((r) => {
+                              const key = getRowKey(r);
+                              const ub = ubicacionesMap[key] ?? "";
+                              const label = `${r.registro}${ub ? ` — ${ub}` : ""}`;
+                              const tooltip = [
+                                r.descripcion || "",
+                                r.serie ? `Serie: ${r.serie}` : "",
+                                ub ? `Ubicación: ${ub}` : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" · ");
+
+                              return (
+                                <Tooltip key={key} title={tooltip} arrow>
+                                  <Chip
+                                    size="small"
+                                    icon={<Inventory2RoundedIcon sx={{ fontSize: 18 }} />}
+                                    label={label}
+                                    onDelete={() => {
+                                      setPasesSeleccionados((prev) =>
+                                        prev.filter((x) => getRowKey(x) !== key)
+                                      );
+                                      setUbicacionesMap((m) => {
+                                        const n = { ...m };
+                                        delete n[key];
+                                        return n;
+                                      });
+                                    }}
+                                    sx={{
+                                      mr: 0.5,
+                                      mb: 0.75,
+                                      borderRadius: 1.5,
+                                      fontWeight: 600,
+                                      backgroundColor: colors.blueAccent[600],
+                                      color: "#fff",
+                                      border: `1px solid ${colors.blueAccent[400]}`,
+                                      "& .MuiChip-icon": { color: "#fff", ml: 0.5 },
+                                      "& .MuiChip-deleteIcon": { color: "#fff" },
+                                      "&:hover": { backgroundColor: colors.blueAccent[500] },
+                                    }}
+                                  />
+                                </Tooltip>
+                              );
+                            })}
+                          </Stack>
                         )}
-                      </Box>
+                      </Paper>
                     </Grid>
 
                     <Grid size={{ xs: 12, md: 12 }}>
@@ -431,43 +536,146 @@ const FormularioActaCargo = () => {
                   </Typography>
 
                   {/* Barra: Registro + Buscar + Ubicación por defecto */}
-                  <Box sx={{ mb: 2, display: "flex", gap: 1, alignItems: "center" }}>
-                    <Autocomplete
-                      size="small"
-                      color="secondary"
-                      options={ubicacionesOptions}
-                      value={ubicacionDefault}
-                      onChange={(e, val) => setUbicacionDefault(val ?? "")}
-                      renderInput={(p) => (
-                        <TextField color="secondary" {...p} label="Ubicación por defecto" />
-                      )}
-                      sx={{ width: 300, ml: "auto" }}
-                    />
-                    <TextField
-                      size="small"
-                      color="secondary"
-                      label="Ingrese registro"
-                      value={registroInput}
-                      onChange={(e) => setRegistroInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleBuscarRegistro();
-                        }
-                      }}
-                    />
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      mb: 2,
+                      borderRadius: 2,
+                      border: `1px solid ${colors.grey[700]}`,
+                      backgroundColor: colors.backGround[100],
+                    }}
+                  >
+                    <Grid container spacing={1.5} alignItems="center">
+                      {/* Área */}
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Autocomplete
+                          size="small"
+                          fullWidth
+                          options={areas} // [{ value, label }]
+                          getOptionLabel={(o) => (typeof o === "string" ? o : `${o.value} - ${o.label}`)}
+                          isOptionEqualToValue={(opt, val) => String(opt.value) === String(val.value)}
+                          value={areas.find((a) => String(a.value) === String(values.IdArea)) || null}
+                          onChange={async (e, newVal) => {
+                            const idArea = newVal ? Number(newVal.value) : "";
+                            setFieldValue("IdArea", idArea);
+                            await cargarUbicacionesPorArea(newVal?.value);
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              color="secondary"
+                              label="Área"
+                              error={touched.IdArea && Boolean(errors.IdArea)}
+                              helperText={touched.IdArea && errors.IdArea}
+                              InputProps={{
+                                ...params.InputProps,
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <ApartmentRoundedIcon
+                                      sx={{ fontSize: 18, color: colors.grey[400] }}
+                                    />
+                                  </InputAdornment>
+                                ),
+                              }}
+                            />
+                          )}
+                          filterOptions={(opts, state) => {
+                            const q = state.inputValue.toLowerCase().trim();
+                            if (!q) return opts;
+                            return opts.filter(
+                              (o) =>
+                                String(o.value).toLowerCase().includes(q) ||
+                                String(o.label).toLowerCase().includes(q)
+                            );
+                          }}
+                        />
+                      </Grid>
 
-                    <Button
-                      type="button"
-                      variant="outlined"
-                      onClick={handleBuscarRegistro}
-                      disabled={buscando}
-                      sx={{ height: 40, borderColor: colors.gov[500], color: colors.gov[500] }}
-                    >
-                      {buscando ? "Buscando..." : "Buscar"}
-                    </Button>
-                  </Box>
+                      {/* Ubicación por defecto */}
+                      <Grid size={{ xs: 12, md: 6 }}>
+                        <Autocomplete
+                          size="small"
+                          fullWidth
+                          options={ubicacionesOptions} // array de strings
+                          value={ubicacionDefault}
+                          onChange={(e, val) => setUbicacionDefault(val ?? "")}
+                          renderInput={(p) => (
+                            <TextField
+                              {...p}
+                              color="secondary"
+                              label="Ubicación por defecto"
+                              InputProps={{
+                                ...p.InputProps,
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <PlaceRoundedIcon sx={{ fontSize: 18, color: colors.grey[400] }} />
+                                  </InputAdornment>
+                                ),
+                              }}
+                            />
+                          )}
+                        />
+                      </Grid>
+
+                      {/* Registro */}
+                      <Grid size={{ xs: 12, md: 8 }}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          color="secondary"
+                          label="Ingrese registro"
+                          value={registroInput}
+                          onChange={(e) => setRegistroInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleBuscarRegistro();
+                            }
+                          }}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <SearchRoundedIcon sx={{ fontSize: 18, color: colors.grey[400] }} />
+                              </InputAdornment>
+                            ),
+                            endAdornment: registroInput ? (
+                              <InputAdornment position="end">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => setRegistroInput("")}
+                                  sx={{ color: colors.grey[400] }}
+                                >
+                                  <ClearRoundedIcon fontSize="small" />
+                                </IconButton>
+                              </InputAdornment>
+                            ) : null,
+                          }}
+                        />
+                      </Grid>
+
+                      {/* Botón Buscar */}
+                      <Grid size={{ xs: 12, md: 4 }}>
+                        <Button
+                          type="button"
+                          fullWidth
+                          variant="contained"
+                          color="secondary"
+                          onClick={handleBuscarRegistro}
+                          disabled={buscando}
+                          startIcon={!buscando && <SearchRoundedIcon />}
+                          sx={{
+                            height: 40,
+                            fontWeight: 700,
+                            boxShadow: "none",
+                          }}
+                        >
+                          {buscando ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "Buscar"}
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </Paper>
 
                   {/* Resultado de búsqueda */}
                   {resultadoActivo && (
@@ -503,7 +711,7 @@ const FormularioActaCargo = () => {
 
                         {/* Acciones / Ubicación / Estado */}
                         <Grid size={{ xs: 12, md: 6 }}>
-                          <Autocomplete
+                          {/* <Autocomplete
                             size="small"
                             options={ubicacionesOptions}
                             value={ubicacionesMap[getRowKey(resultadoActivo)] ?? ""}
@@ -517,7 +725,7 @@ const FormularioActaCargo = () => {
                               <TextField color="secondary" {...p} label="Ubicación (este ítem)" />
                             )}
                             sx={{ mb: 1.25 }}
-                          />
+                          /> */}
 
                           {resultadoActivo.cargado ? (
                             <>

@@ -19,3 +19,13 @@ export const listaAreas = async () => {
     throw error;
   }
 };
+
+export const listarUbicaciones = async (codigoArea) => {
+  try {
+    const response = await api.get(`/empleado/ubicaciones/${codigoArea}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error al obtener el listado de areas:", error);
+    throw error;
+  }
+};

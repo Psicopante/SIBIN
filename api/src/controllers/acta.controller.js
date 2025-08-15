@@ -311,14 +311,16 @@ export const crearActaCargo = async (req, res) => {
     IdArea,
     JefeArea,
     NotaMarginal,
-    Archivo,
-    SistemaUsuario,
     Registros, // [{ Registro, Ubicacion }]
   } = req.body;
 
   try {
     // Extraer solo los IDs para la validación
     const idsRegistros = Registros.map((r) => BigInt(r.Registro));
+    const SistemaUsuario = req.usuario?.username ?? null;
+    const IdAreaFinal =
+      IdCategoria === 2 ? (IdArea === "" || IdArea == null ? null : Number(IdArea)) : null;
+    const JefeAreaFinal = IdCategoria === 2 ? Id_Usuario : null;
 
     // Validar si hay activos ya cargados
     const registrosOcupados = await prisma.acta_Detalle.findMany({
@@ -370,11 +372,10 @@ export const crearActaCargo = async (req, res) => {
     const nuevaActa = await prisma.acta_Encabezado.create({
       data: {
         Id_Usuario,
-        //Id_Tipo_Acta: 1, este no iria
         FechaActa: new Date(FechaActa),
         IdCategoria,
-        IdArea,
-        JefeArea,
+        IdArea: IdAreaFinal,
+        JefeArea: JefeAreaFinal,
         NotaMarginal,
         SistemaUsuario,
       },
@@ -418,88 +419,128 @@ export const crearActaDescargo = async (req, res) => {
     Id_Usuario,
     FechaActa,
     IdCategoria,
-    IdArea,
-    JefeArea,
+    IdArea, // solo si IdCategoria === 2
+    JefeArea, // se ignora: lo calculamos abajo
     NotaMarginal,
-    SistemaUsuario,
-    Registros, // array de registros a descargar
+    Registros, // puede ser [123] o [{ Registro: 123, Ubicacion: "..." }]
   } = req.body;
 
   try {
-    // Verificar que los registros estén cargados
-    const detallesActivos = await prisma.acta_Detalle.findMany({
-      where: {
-        Registro: { in: Registros.map((r) => BigInt(r)) },
-        Estado: 1,
-      },
-      select: {
-        Id_Acta_Det: true,
-        Registro: true,
-      },
+    if (!Array.isArray(Registros) || Registros.length === 0) {
+      return res.status(400).json({ error: "Debe enviar 'Registros' con al menos un elemento." });
+    }
+
+    const UBICACION_FIJA = "EDIFICIO ANEXO, BODEGA UBN";
+    const fechaHoy = new Date();
+    const SistemaUsuario = req.usuario?.username ?? null;
+
+    // Normalizar registros: acepta números o { Registro, Ubicacion }
+    const items = Registros.map((item) => {
+      const rawReg = item && typeof item === "object" ? item.Registro : item;
+      if (rawReg === undefined || rawReg === null)
+        throw new Error("Elemento de 'Registros' inválido: falta 'Registro'.");
+      const str = String(rawReg).trim();
+      if (!/^\d+$/.test(str)) throw new Error(`Registro inválido: ${rawReg}`);
+      const regBI = BigInt(str);
+      const ubic =
+        item && typeof item === "object" && item.Ubicacion
+          ? String(item.Ubicacion).trim()
+          : UBICACION_FIJA;
+      return { regBI, ubicacion: ubic || UBICACION_FIJA };
     });
 
-    const registrosActivos = detallesActivos.map((d) => d.Registro?.toString());
-    const registrosNoEncontrados = Registros.filter((r) => !registrosActivos.includes(r.toString()));
+    // Quitar duplicados por registro
+    const seen = new Set();
+    const itemsUnique = items.filter(({ regBI }) => {
+      const k = regBI.toString();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
 
-    if (registrosNoEncontrados.length > 0) {
+    const registrosBI = itemsUnique.map((i) => i.regBI);
+    const ubicPorRegistro = Object.fromEntries(
+      itemsUnique.map((i) => [i.regBI.toString(), i.ubicacion])
+    );
+
+    // Reglas de Área/Jefe
+    const IdAreaFinal =
+      IdCategoria === 2 ? (IdArea === "" || IdArea == null ? null : Number(IdArea)) : null;
+    const JefeAreaFinal = IdCategoria === 2 ? Id_Usuario : null;
+
+    // 1) Validar que TODOS estén cargados (Estado = 1)
+    const detallesActivos = await prisma.acta_Detalle.findMany({
+      where: { Registro: { in: registrosBI }, Estado: 1 },
+      select: { Registro: true },
+    });
+    const activosOK = new Set(detallesActivos.map((d) => d.Registro.toString()));
+    const noEncontrados = registrosBI.map((bi) => bi.toString()).filter((s) => !activosOK.has(s));
+    if (noEncontrados.length > 0) {
       return res.status(400).json({
         error: "Algunos registros no están cargados y no pueden ser descargados.",
-        registrosNoEncontrados,
+        registrosNoEncontrados: noEncontrados,
       });
     }
 
-    // Crear encabezado de descargo
-    const encabezadoDescargo = await prisma.acta_Encabezado_Descargo.create({
-      data: {
-        Id_Usuario,
-        FechaActa: new Date(FechaActa),
-        IdCategoria,
-        IdArea,
-        JefeArea,
-        NotaMarginal,
-        SistemaUsuario,
-      },
+    // 2) Transacción
+    const idActaDescargo = await prisma.$transaction(async (tx) => {
+      // Encabezado descargo
+      const enc = await tx.acta_Encabezado_Descargo.create({
+        data: {
+          Id_Usuario,
+          FechaActa: new Date(FechaActa),
+          IdCategoria,
+          IdArea: IdAreaFinal,
+          JefeArea: JefeAreaFinal,
+          NotaMarginal,
+          SistemaUsuario,
+        },
+      });
+
+      await tx.acta_Detalle_Descargo.createMany({
+        data: registrosBI.map((reg) => ({
+          Id_Usuario,
+          Id_Acta_Enc_Des: enc.Id_Acta_Enc_Des,
+          Registro: reg,
+          FechaDescargo: fechaHoy,
+          JefeArea: JefeAreaFinal,
+          SistemaFecha: fechaHoy,
+        })),
+      });
+
+      // Actualizar Acta_Detalle: baja del cargo
+      await Promise.all(
+        registrosBI.map((reg) =>
+          tx.acta_Detalle.updateMany({
+            where: { Registro: reg, Estado: 1 },
+            data: {
+              Estado: 0,
+              FechaDescargo: fechaHoy,
+              Id_Acta_Descargo: enc.Id_Acta_Enc_Des,
+            },
+          })
+        )
+      );
+
+      // Actualizar ubicación por activo en TB_Activo
+      await Promise.all(
+        registrosBI.map((reg) =>
+          tx.tB_Activo.update({
+            where: { Act_Registro: reg },
+            data: { Act_Ubicacion: ubicPorRegistro[reg.toString()] ?? UBICACION_FIJA },
+          })
+        )
+      );
+
+      return enc.Id_Acta_Enc_Des;
     });
 
-    const fechaHoy = new Date();
-
-    // Insertar detalles en tabla de descargo
-    const detallesDescargo = Registros.map((registro) => ({
-      Id_Usuario,
-      Id_Acta_Enc_Des: encabezadoDescargo.Id_Acta_Enc_Des,
-      Registro: BigInt(registro),
-      FechaDescargo: fechaHoy,
-      JefeArea,
-      SistemaFecha: fechaHoy,
-    }));
-
-    await prisma.acta_Detalle_Descargo.createMany({
-      data: detallesDescargo,
-    });
-
-    // Actualizar registros originales en acta_detalle
-    await Promise.all(
-      Registros.map(async (registro) => {
-        await prisma.acta_Detalle.updateMany({
-          where: {
-            Registro: BigInt(registro),
-            Estado: 1,
-          },
-          data: {
-            Estado: 0,
-            FechaDescargo: fechaHoy,
-            Id_Acta_Descargo: encabezadoDescargo.Id_Acta_Enc_Des,
-          },
-        });
-      })
-    );
-
-    return res.status(201).json({
+    res.status(201).json({
       message: "Acta de descargo creada exitosamente",
-      Id_Acta_Enc_Des: encabezadoDescargo.Id_Acta_Enc_Des,
+      Id_Acta_Enc_Des: idActaDescargo,
     });
   } catch (error) {
     console.error("Error al crear acta de descargo:", error);
-    res.status(500).json({ error: "Error al crear acta de descargo." });
+    res.status(500).json({ error: error.message || "Error al crear acta de descargo." });
   }
 };
