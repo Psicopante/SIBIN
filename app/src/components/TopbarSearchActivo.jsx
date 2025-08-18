@@ -17,6 +17,19 @@ import {
   Divider,
   Tooltip,
 } from "@mui/material";
+import {
+  Timeline,
+  TimelineItem,
+  TimelineSeparator,
+  TimelineConnector,
+  TimelineContent,
+  TimelineDot,
+  TimelineOppositeContent,
+} from "@mui/lab";
+// Icons
+import ArrowCircleUpRoundedIcon from "@mui/icons-material/ArrowCircleUpRounded"; // cargo
+import ArrowCircleDownRoundedIcon from "@mui/icons-material/ArrowCircleDownRounded"; // descargo
+import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
@@ -38,6 +51,23 @@ export default function TopbarSearchActivo() {
   const [loading, setLoading] = useState(false);
   const [activo, setActivo] = useState(null);
   const [error, setError] = useState(null);
+
+  const styleForTipo = (tipo, colors) => {
+    if (tipo === "cargo") {
+      return {
+        label: "Cargo",
+        Icon: ArrowCircleUpRoundedIcon,
+        dotSx: { bgcolor: colors.greenAccent[500] },
+        chipSx: { bgcolor: colors.greenAccent[500], color: "#fff" },
+      };
+    }
+    return {
+      label: "Descargo",
+      Icon: ArrowCircleDownRoundedIcon,
+      dotSx: { bgcolor: colors.orangeAccent?.[600] || "#fb8c00" },
+      chipSx: { bgcolor: colors.orangeAccent?.[600] || "#fb8c00", color: "#fff" },
+    };
+  };
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
@@ -112,8 +142,8 @@ export default function TopbarSearchActivo() {
             display: "flex",
             alignItems: "center",
             gap: 1,
-            bgcolor: colors.backGround[100], // 🎨 color de fondo
-            color: colors.grey[100], // opcional: color de texto
+            bgcolor: colors.backGround[100],
+            color: colors.grey[100],
           }}
         >
           <Inventory2RoundedIcon />
@@ -188,13 +218,13 @@ export default function TopbarSearchActivo() {
                     Información de cargado
                   </Typography>
                   <Grid container spacing={2} alignItems="center">
-                    <Grid item>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <InfoRow label="Acta" value={`#${activo.cargadoInfo?.Id_Acta_Enc}`} />
                     </Grid>
-                    <Grid item>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <InfoRow label="Fecha" value={fmtFecha(activo.cargadoInfo?.FechaActa)} />
                     </Grid>
-                    <Grid item xs>
+                    <Grid size={{ xs: 12, md: 5 }}>
                       <InfoRow
                         label="Empleado"
                         value={`${activo.cargadoInfo?.CodigoEmpleado || ""} - ${
@@ -205,6 +235,62 @@ export default function TopbarSearchActivo() {
                   </Grid>
                 </>
               )}
+              <Divider sx={{ my: 2 }} />
+              {/* === Historial como Timeline === */}
+              <Box sx={{ mt: 3 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <HistoryRoundedIcon />
+                  <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                    Historial del activo
+                  </Typography>
+                </Box>
+
+                {Array.isArray(activo.historial) && activo.historial.length > 0 ? (
+                  <Timeline position="alternate">
+                    {[...activo.historial]
+                      .sort((a, b) => dayjs(b.fecha).valueOf() - dayjs(a.fecha).valueOf()) // más antiguo → más nuevo
+                      .map((h, idx, arr) => {
+                        const s = styleForTipo(h.tipo, colors);
+                        const isLast = idx === arr.length - 1;
+                        return (
+                          <TimelineItem key={`${h.tipo}-${h.acta}-${idx}`}>
+                            <TimelineOppositeContent sx={{ m: "auto 0" }}>
+                              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                {fmtFecha(h.fecha)}
+                              </Typography>
+                            </TimelineOppositeContent>
+
+                            <TimelineSeparator>
+                              <TimelineDot sx={s.dotSx}>
+                                <s.Icon fontSize="small" />
+                              </TimelineDot>
+                              {!isLast && <TimelineConnector />}
+                            </TimelineSeparator>
+
+                            <TimelineContent sx={{ py: 1 }}>
+                              <Box
+                                sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}
+                              >
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                                  {s.label}
+                                </Typography>
+                                <Chip size="small" label={`Acta #${h.acta}`} sx={{ ...s.chipSx }} />
+                              </Box>
+
+                              <Typography variant="body2" sx={{ mt: 0.25 }}>
+                                {h.codigoEmpleado} — {h.empleado}
+                              </Typography>
+                            </TimelineContent>
+                          </TimelineItem>
+                        );
+                      })}
+                  </Timeline>
+                ) : (
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    (Sin historial disponible)
+                  </Typography>
+                )}
+              </Box>
             </>
           )}
         </DialogContent>
