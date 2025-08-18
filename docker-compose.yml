@@ -1,0 +1,34 @@
+services:
+  app-shmg:
+    container_name: appSIBIN
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+      args:
+        - VITE_BACKEND_URL=/apiSIBIN/api
+        - VITE_BACKEND_LOGIN=/apiSIBIN/
+    image: projects-app-sibin:latest
+    networks:
+      - shared-network
+    expose:
+      - "80"
+    env_file:
+      - ./app/.env
+
+  api-shmg:
+    container_name: apiSIBIN
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: projects-api-sibin:latest
+    networks:
+      - shared-network
+    ports:
+      - "3400:3400"
+    env_file:
+      - ./api/.env
+
+networks:
+  shared-network:
+    external: true
+    name: projects_shared-network
