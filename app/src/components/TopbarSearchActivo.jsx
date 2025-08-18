@@ -57,8 +57,8 @@ export default function TopbarSearchActivo() {
       return {
         label: "Cargo",
         Icon: ArrowCircleUpRoundedIcon,
-        dotSx: { bgcolor: colors.greenAccent[500] },
-        chipSx: { bgcolor: colors.greenAccent[500], color: "#fff" },
+        dotSx: { bgcolor: colors.greenAccent[700], color: colors.grey[100] },
+        chipSx: { bgcolor: colors.greenAccent[700], color: colors.grey[100] },
       };
     }
     return {
