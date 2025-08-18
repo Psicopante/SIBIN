@@ -31,7 +31,7 @@ COPY --chown=appuser:appgroup . .
 RUN npx prisma generate
 
 # Puerto de la app
-EXPOSE 3300
+EXPOSE 3400
 
 # Comando por defecto
 CMD ["node", "src/app.js"]

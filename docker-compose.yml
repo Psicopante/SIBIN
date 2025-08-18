@@ -1,5 +1,5 @@
 services:
-  app-shmg:
+  app-sibin:
     container_name: appSIBIN
     build:
       context: ./app
@@ -15,7 +15,7 @@ services:
     env_file:
       - ./app/.env
 
-  api-shmg:
+  api-sibin:
     container_name: apiSIBIN
     build:
       context: ./api
